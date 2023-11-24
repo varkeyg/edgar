@@ -1,0 +1,13 @@
+services:
+  postgres:
+    container_name: postgres_edgar
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=pguser
+      - POSTGRES_PASSWORD=pgpass
+      - POSTGRES_DB=edgar
+    ports:
+      - "5444:5432"
+    restart: always
+    volumes:
+      - ${HOME}/postgres_edgar:/var/lib/postgresql/data
