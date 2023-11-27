@@ -17,6 +17,7 @@ class EdgarHist:
         self.header = {"User-Agent" : "Me Inc noname@me.inc", "Accept-Encoding" : "gzip, deflate", "Host" : "www.sec.gov"}
         self.data_folder = str(Path(__file__).resolve().parent.parent) + "/" + self.config["storage"]["data-folder"]
         self.pgdb = utils.PGDB(self.config["pgdb"]["dburi"])
+        self.sql_folder = str(Path(__file__).resolve().parent.parent) + "/sql/"
         self.num_quarters = num_quarters
         self.quater_strings = []
         self.load_quaters()
@@ -61,3 +62,15 @@ class EdgarHist:
             self.pgdb.save2db(rs, 'sec_13f_submission',recreate=recreate)
             rs = utils.csv2list(self.data_folder + q + '_form13f/COVERPAGE.tsv','\t')
             self.pgdb.save2db(rs, 'sec_13f_coverpage',recreate=recreate)
+
+    def create_index(self):
+        print(self.sql_folder + "create_index.sql")
+        self.pgdb.runsql_script(self.sql_folder + "create_index.sql")
+
+def run():
+    x = EdgarHist(num_quarters=2)
+    x.load_sic_codes()
+    x.load_cik_sic_codes()
+    x.download13f()
+    x.load_infotable()
+    x.create_index()

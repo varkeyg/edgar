@@ -8,3 +8,4 @@ def test_load():
     x.load_cik_sic_codes()
     x.download13f()
     x.load_infotable()
+    x.create_index()

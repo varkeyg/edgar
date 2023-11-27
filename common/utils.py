@@ -69,6 +69,13 @@ class PGDB:
     def __init__(self, dburi) -> None:
         self.con = psycopg.connect(dburi)
 
+    def runsql_script(self, sql_file):
+        s = file2string(sql_file)
+        sqls = s.split(";")
+        for sql in sqls:
+            self.runsql(sql)
+        
+
     def runsql(self, sql, params=None):
         cur = self.con.cursor()
         if params is None:
