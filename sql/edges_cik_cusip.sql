@@ -8,3 +8,4 @@ select concat(i.accession_number,'-',i.infotable_sk) as "id",
   from public.sec_13f_submission s,
   	   public.sec_13f_infotable i
 where s.accession_number = i.accession_number
+  and s.filing_date = %s

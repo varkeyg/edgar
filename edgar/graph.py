@@ -26,8 +26,14 @@ class Export:
 
     def export_cusip_nodes(self):
         sql_file = self.sql_folder + "nodes_cusip.sql"
-        rs = self.pgdb.runquery_file(sql_file)
-        utils.write_graph_data(rs, self.graph_data_folder + "/cusip_nodes.csv")
+        drs = self.pgdb.runquery("select distinct filing_date from public.sec_13f_submission")
+        for idx,rec in enumerate(drs.records):            
+            rs = self.pgdb.runquery_file(sql_file,params=rec)
+            print(idx, rec, len(rs.records), "records")
+            if idx == 0:
+                utils.write_graph_data(rs, self.graph_data_folder + "/cusip_nodes.csv", write_header=True)
+            else:
+                utils.write_graph_data(rs, self.graph_data_folder + "/cusip_nodes.csv", write_header=False)
 
     def export_cik_sic_edges(self):
         sql_file = self.sql_folder + "edges_cik_sic.sql"
@@ -36,8 +42,14 @@ class Export:
  
     def export_cik_cusip_edges(self):
         sql_file = self.sql_folder + "edges_cik_cusip.sql"
-        rs = self.pgdb.runquery_file(sql_file)
-        utils.write_graph_data(rs, self.graph_data_folder + "/cik_cusip_edges.csv")
+        drs = self.pgdb.runquery("select distinct filing_date from public.sec_13f_submission")
+        for idx,rec in enumerate(drs.records):  
+            rs = self.pgdb.runquery_file(sql_file,params=rec)
+            print(idx, rec, len(rs.records), "records - edges_cik_cusip")
+            if idx == 0:
+                utils.write_graph_data(rs, self.graph_data_folder + "/cik_cusip_edges.csv", write_header=True)
+            else:
+                utils.write_graph_data(rs, self.graph_data_folder + "/cik_cusip_edges.csv", write_header=False)
  
 
 def run():

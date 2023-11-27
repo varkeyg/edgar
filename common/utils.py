@@ -109,10 +109,13 @@ class PGDB:
         self.con.commit()
         cur.close()
     
-    def runquery(self,query):
+    def runquery(self,query, params=None):
         rs = Recordset()
         cur = self.con.cursor()
-        cur.execute(query=query)
+        if params is None:
+            cur.execute(query=query)
+        else:
+            cur.execute(query=query, params=params)
         header = []
         for field in cur.description:
             header.append(field.name)
@@ -122,13 +125,17 @@ class PGDB:
         cur.close()
         return rs
 
-    def runquery_file(self, query_file):
+    def runquery_file(self, query_file, params=None):
         sql = file2string(query_file)
-        return self.runquery(sql)
+        if params is None:
+            return self.runquery(sql)
+        else:
+            return self.runquery(sql, params)
+            
     
 
 
-def write_graph_data(rs:Recordset, outfile:str):
+def write_graph_data(rs:Recordset, outfile:str, write_header=False):
     new_header = []
     for idx,field in enumerate(rs.header):
         if field == "id":
@@ -147,10 +154,15 @@ def write_graph_data(rs:Recordset, outfile:str):
         new_header.append(field)
     rs.header = new_header
 
-
-    with open(outfile, 'w', newline='\n') as csvfile:
+    mode = ''
+    if write_header is True:
+        mode = 'w'
+    else:
+        mode = 'a'
+    with open(outfile, mode, newline='\n') as csvfile:
         cw = csv.writer(csvfile, delimiter=',',
                         quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        cw.writerow(rs.header)
+        if write_header is True:
+            cw.writerow(rs.header)
         for record in rs.records:
             cw.writerow(record)

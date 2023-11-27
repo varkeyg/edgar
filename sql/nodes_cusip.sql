@@ -13,4 +13,5 @@ SELECT concat(s.cik ,'-', s.periodofreport, '-',  i.cusip , '-', s.filing_date) 
   from public.sec_13f_submission s,
   	   public.sec_13f_infotable i
 where s.accession_number = i.accession_number
+  and filing_date = %s
 group by concat(s.cik ,'-', s.periodofreport, '-',  i.cusip , '-', s.filing_date)
