@@ -1,0 +1,15 @@
+{
+    "editor.fontFamily": "SFMono-Regular, 'SF Mono', Menlo, Monaco, 'Courier New', monospace",
+    "terminal.integrated.fontFamily": "SFMono-Regular",
+    "terminal.integrated.fontSize": 14,
+    "editor.fontSize": 14,
+    "workbench.tree.indent": 20,
+    "workbench.iconTheme": "eq-material-theme-icons-deepforest",
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "editor.guides.indentation": false,
+    "terminal.integrated.lineHeight": 1.3
+}
