@@ -4,6 +4,7 @@ from edgar import utils as ut
 from datetime import datetime, timedelta
 import requests
 import xml.etree.ElementTree as ET
+import csv
 
 
 class ThirteenF:
@@ -11,10 +12,11 @@ class ThirteenF:
         load_dotenv(verbose=True)
         self.tf_folder = os.getenv("data_folder") + "/thirteenf"
         os.makedirs(self.tf_folder, exist_ok=True)
-        self.min_date = datetime.fromisoformat("2025-02-10")
+        self.min_date = datetime.fromisoformat("2024-12-01")
         self.filing_dates = []
         self.filing_urls = []
         self.directories = []
+        self.holdings = []
         self.sec_header = {"User-Agent": "nobody@nobody.com", "Accept-Encoding": "gzip, deflate", "Host": "www.sec.gov"}
         self.base_index_url = "https://www.sec.gov/Archives/edgar/daily-index/"  # 2025/QTR1/master.20250214.idx"
         print("Initialized thirteenf")
@@ -54,8 +56,9 @@ class ThirteenF:
             index_url = f"{self.base_index_url}{dt.year}/QTR{qtr}/master.{dt.strftime('%Y%m%d')}.idx"  # 2025/QTR1/master.20250214.idx"
             self.extract_13f_urls(index_url=index_url)
         print(f"number of 13F filings {len(self.filing_urls)}")
-        for filing in self.filing_urls[0:10]:
+        for filing in self.filing_urls:
             self.extract_holdings(filing)
+        self.write_holdings()
 
     def extract_13f_urls(self, index_url):
         resp = requests.get(index_url, headers=self.sec_header)
@@ -64,7 +67,7 @@ class ThirteenF:
             for line in lines:
                 record = line.split("|")
                 if len(record) == 5:
-                    if record[2].startswith("13F"):
+                    if record[2].startswith("13F-HR"):
                         self.filing_urls.append(record)
 
     def get_new_filing_dates(self):
@@ -82,8 +85,10 @@ class ThirteenF:
         raw_filing = raw_filing.replace("ns2:", "")
         raw_filing = raw_filing.replace("ns3:", "")
         raw_filing = raw_filing.replace("ns4:", "")
+        raw_filing = raw_filing.replace("n1:", "")
         info_table_start = raw_filing.find("<informationTable")
         info_table_end = raw_filing.find("</informationTable>") + 19
+        print(url_13f, info_table_start, info_table_end)
         holdings = raw_filing[info_table_start:info_table_end]
         root = ET.fromstring(holdings)
         for infotable in root.findall("infoTable"):
@@ -94,6 +99,7 @@ class ThirteenF:
             rec.append(self.nvl(infotable.find("cusip")))
             rec.append(self.nvl(infotable.find("figi")))
             rec.append(self.nvl(infotable.find("value")))
+            rec.append(self.nvl(infotable.find("putCall")))
             shrsOrPrnAmt = infotable.find("shrsOrPrnAmt")
             if shrsOrPrnAmt is not None:
                 rec.append(self.nvl(shrsOrPrnAmt.find("sshPrnamt")))
@@ -102,6 +108,7 @@ class ThirteenF:
                 rec.append("")
                 rec.append("")
             rec.append(self.nvl(infotable.find("investmentDiscretion")))
+            rec.append(self.nvl(infotable.find("otherManager")))
             votingAuthority = infotable.find("votingAuthority")
             if votingAuthority is not None:
                 rec.append(self.nvl(votingAuthority.find("Sole")))
@@ -112,7 +119,8 @@ class ThirteenF:
                 rec.append("")
                 rec.append("")
             rec.extend(header)
-            print(rec)
+            # print(rec)
+            self.holdings.append(rec)
 
     def nvl(self, x):
         return "" if x is None else x.text
@@ -124,13 +132,43 @@ class ThirteenF:
             if line.startswith("</SEC-HEADER>"):
                 break
             if line.startswith("ACCESSION NUMBER:"):
-                header.append(line.replace("ACCESSION NUMBER:","").strip())
+                header.append(line.replace("ACCESSION NUMBER:", "").strip())
             if line.startswith("CONFORMED PERIOD OF REPORT:"):
-                header.append(line.replace("CONFORMED PERIOD OF REPORT:","").strip())    
-            if line.startswith("FILED AS OF DATE:"):
-                header.append(line.replace("FILED AS OF DATE:","").strip())    
-            if line.startswith("DATE AS OF CHANGE:"):
-                header.append(line.replace("DATE AS OF CHANGE:","").strip())   
-            if line.startswith("EFFECTIVENESS DATE:"):
-                header.append(line.replace("EFFECTIVENESS DATE:","").strip())                              
+                header.append(line.replace("CONFORMED PERIOD OF REPORT:", "").strip())
+            # if line.startswith("FILED AS OF DATE:"):
+            #     header.append(line.replace("FILED AS OF DATE:", "").strip())
+            # if line.startswith("DATE AS OF CHANGE:"):
+            #     header.append(line.replace("DATE AS OF CHANGE:", "").strip())
+            # if line.startswith("EFFECTIVENESS DATE:"):
+            #     header.append(line.replace("EFFECTIVENESS DATE:", "").strip())
         return header
+
+    def write_holdings(self):
+        # TODO PUT_CALL
+        header = [
+            "CIK",
+            "FILING_MANAGER_NAME",
+            "SUBMISSION_TYPE",
+            "FILING_DATE",
+            "FILE_NAME",
+            "NAME_OF_ISSUER",
+            "TITLE_OF_CLASS",
+            "CUSIP",
+            "FIGI",
+            "MARKET_VALUE",
+            "PUT_CALL",
+            "SSH_PRN_AMT",
+            "SSH_PRN_AMT_TYPE",
+            "INVESTMENT_DISCRETION",
+            "OTHER_MANAGER",
+            "VOTING_AUTHORITY_SOLE",
+            "VOTING_AUTHORITY_SHARED",
+            "VOTING_AUTHORITY_NONE",
+            "ACCESSION_NUMBER",
+            "PERIOD_DATE"
+        ]
+        self.holdings.insert(0, header)
+        out = self.tf_folder + "/holdings.csv"
+        with open(out, "w", newline="\n") as file:
+            writer = csv.writer(file)
+            writer.writerows(self.holdings)
