@@ -45,9 +45,3 @@ class cns:
                     for row in reader:
                         if len(row) == 6:
                             writer.writerow(row)
-
-        # self.holdings.insert(0, header)
-        # out = self.tf_folder + "/holdings.csv"
-        # with open(out, "w", newline="\n") as file:
-        #     writer = csv.writer(file)
-        #     writer.writerows(self.holdings)

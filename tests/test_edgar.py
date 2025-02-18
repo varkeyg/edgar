@@ -10,5 +10,5 @@ def test_13f():
 
 def test_cns():
     c = cns.cns()
-    c.load_urls(num_months=3)
+    c.load_urls(num_months=12)
     c.combine_files()
