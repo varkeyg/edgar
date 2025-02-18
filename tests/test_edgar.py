@@ -1,5 +1,5 @@
 from edgar import thirteenf
-
+from edgar import cns
 
 def test_13f():
     tf = thirteenf.ThirteenF()
@@ -7,3 +7,8 @@ def test_13f():
     # tf.download_files(urls)
     # tf.unzip()
     tf.get_13f_data()
+
+def test_cns():
+    c = cns.cns()
+    c.load_urls(num_months=3)
+    c.combine_files()
