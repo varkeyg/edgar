@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 import requests
 import xml.etree.ElementTree as ET
 import csv
+import json
+from pprint import pprint
 
 
 class ThirteenF:
@@ -17,9 +19,11 @@ class ThirteenF:
         self.filing_urls = []
         self.directories = []
         self.holdings = []
-        self.sec_header = {"User-Agent": "nobody@nobody.com", "Accept-Encoding": "gzip, deflate", "Host": "www.sec.gov"}
-        self.base_index_url = "https://www.sec.gov/Archives/edgar/daily-index/"  # 2025/QTR1/master.20250214.idx"
+        self.sec_header = {"User-Agent": "nobody@nobody.com",
+                           "Accept-Encoding": "gzip, deflate", "Host": "www.sec.gov"}
+        self.base_index_url = "https://www.sec.gov/Archives/edgar/daily-index/"
         print("Initialized thirteenf")
+
 
     def get_urls(self, num_quarters):
         urls = []
@@ -29,11 +33,14 @@ class ThirteenF:
         quarters.append("01jun2024-31aug2024_form13f.zip")
         quarters.append("01mar2024-31may2024_form13f.zip")
         quarters.append("01jan2024-29feb2024_form13f.zip")
-        quarters.extend(["2023q4_form13f.zip", "2023q3_form13f.zip", "2023q2_form13f.zip", "2023q1_form13f.zip"])
-        quarters.extend(["2022q4_form13f.zip", "2022q3_form13f.zip", "2022q2_form13f.zip", "2022q1_form13f.zip"])
+        quarters.extend(["2023q4_form13f.zip", "2023q3_form13f.zip",
+                        "2023q2_form13f.zip", "2023q1_form13f.zip"])
+        quarters.extend(["2022q4_form13f.zip", "2022q3_form13f.zip",
+                        "2022q2_form13f.zip", "2022q1_form13f.zip"])
         for x in range(0, num_quarters):
             urls.append(f"{base_url}{quarters[x]}")
         return urls
+
 
     def download_files(self, urls):
         for url in urls:
@@ -44,21 +51,25 @@ class ThirteenF:
             self.directories.append(local_dir)
             ut.download(url, local_dir + zip_file, self.sec_header)
 
+
     def unzip(self):
         for dir in self.directories:
             zip_file = dir + "/" + dir.split("/")[-2] + ".zip"
             ut.unzip(zip_file, dir)
 
+
     def get_13f_data(self):
         self.get_new_filing_dates()
         for dt in self.filing_dates:
             qtr = (dt.month - 1) // 3 + 1
-            index_url = f"{self.base_index_url}{dt.year}/QTR{qtr}/master.{dt.strftime('%Y%m%d')}.idx"  # 2025/QTR1/master.20250214.idx"
+            # 2025/QTR1/master.20250214.idx"
+            index_url = f"{self.base_index_url}{dt.year}/QTR{qtr}/master.{dt.strftime('%Y%m%d')}.idx"
             self.extract_13f_urls(index_url=index_url)
         print(f"number of 13F filings {len(self.filing_urls)}")
         for filing in self.filing_urls:
             self.extract_holdings(filing)
         self.write_holdings()
+
 
     def extract_13f_urls(self, index_url):
         resp = requests.get(index_url, headers=self.sec_header)
@@ -70,11 +81,14 @@ class ThirteenF:
                     if record[2].startswith("13F-HR"):
                         self.filing_urls.append(record)
 
+
     def get_new_filing_dates(self):
         cur_date = datetime.today()
         while cur_date >= self.min_date:
             self.filing_dates.append(cur_date)
             cur_date = cur_date + timedelta(days=-1)
+
+
 
     def extract_holdings(self, filing):
         url_13f = f"https://www.sec.gov/Archives/{filing[4]}"
@@ -122,8 +136,10 @@ class ThirteenF:
             # print(rec)
             self.holdings.append(rec)
 
+
     def nvl(self, x):
         return "" if x is None else x.text
+
 
     def extract_header(self, filing):
         header = []
@@ -134,17 +150,12 @@ class ThirteenF:
             if line.startswith("ACCESSION NUMBER:"):
                 header.append(line.replace("ACCESSION NUMBER:", "").strip())
             if line.startswith("CONFORMED PERIOD OF REPORT:"):
-                header.append(line.replace("CONFORMED PERIOD OF REPORT:", "").strip())
-            # if line.startswith("FILED AS OF DATE:"):
-            #     header.append(line.replace("FILED AS OF DATE:", "").strip())
-            # if line.startswith("DATE AS OF CHANGE:"):
-            #     header.append(line.replace("DATE AS OF CHANGE:", "").strip())
-            # if line.startswith("EFFECTIVENESS DATE:"):
-            #     header.append(line.replace("EFFECTIVENESS DATE:", "").strip())
+                header.append(line.replace(
+                    "CONFORMED PERIOD OF REPORT:", "").strip())
         return header
 
+
     def write_holdings(self):
-        # TODO PUT_CALL
         header = [
             "CIK",
             "FILING_MANAGER_NAME",
@@ -165,10 +176,36 @@ class ThirteenF:
             "VOTING_AUTHORITY_SHARED",
             "VOTING_AUTHORITY_NONE",
             "ACCESSION_NUMBER",
-            "PERIOD_DATE"
+            "PERIOD_DATE",
         ]
         self.holdings.insert(0, header)
         out = self.tf_folder + "/holdings.csv"
         with open(out, "w", newline="\n") as file:
             writer = csv.writer(file)
             writer.writerows(self.holdings)
+
+
+    def generate_ddl(self, mdt):
+        data = None
+        with open(mdt, "r") as mdata:
+            data = json.load(mdata)
+            for table in data["tables"]:
+                table_name = table["url"].replace(".tsv", "").lower()
+                sql = f"create table {table_name} \n(\n"
+                for column in table["tableSchema"]["columns"]:
+                    data_type = column["datatype"]["base"]
+                    if data_type == "string":
+                        data_type = "varchar(" + \
+                            str(column["datatype"]["maxLength"]) + ")"
+                    elif data_type == "NUMBER":
+                        data_type = "decimal(" + \
+                            str(column["datatype"]["maxLength"]) + ")"
+                    elif data_type == "date":
+                        data_type = "date"
+                    else:
+                        data_type = column["datatype"]["base"] + "FIX ME"
+                    field = f"   {column['name'].lower():<30} {data_type}"
+                    sql += field
+                    sql += ",\n"
+                sql = sql[:-2] + "\n)\n"
+                print(sql)

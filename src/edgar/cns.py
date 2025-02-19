@@ -14,16 +14,16 @@ class cns:
         self.sec_header = {"User-Agent": "nobody@nobody.com", "Accept-Encoding": "gzip, deflate", "Host": "www.sec.gov"}
         self.cns_files = []
         self.base_url = "https://www.sec.gov/files/data/fails-deliver-data/cnsfails"
-        pass
+        # pass
 
     def load_urls(self, num_months=12):
         today = datetime.today().strftime("%Y%m01")
         first_of_month = datetime.strptime(today, "%Y%m%d")
-        print(today, first_of_month)
+        # print(today, first_of_month)
         for x in range(num_months):
             for a in ["a", "b"]:
                 url = self.base_url + first_of_month.strftime("%Y%m") + a + ".zip"
-                print(url)
+                # print(url)
                 local_file = self.cns_folder + "/" + url.split("/")[-1]
                 ut.download(url, local_file, header=self.sec_header)
                 try:

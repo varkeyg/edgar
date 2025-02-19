@@ -15,5 +15,9 @@
     "files.exclude": {
         "**/__init__.py": true,
         "**/.pytest_cache": true
-    }
+    },
+    "python.formatting.autopep8Args": [
+    "--experimental",
+    "--ignore=E303"
+],
 }
